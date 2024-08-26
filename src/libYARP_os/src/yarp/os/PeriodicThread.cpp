@@ -1,3 +1,5 @@
+// clang-format off
+
 /*
  * SPDX-FileCopyrightText: 2006-2021 Istituto Italiano di Tecnologia (IIT)
  * SPDX-FileCopyrightText: 2006-2010 RobotCub Consortium
@@ -106,6 +108,7 @@ private:
     double sumTSq;       //cumulative sum sq of estimated period dT
     double sumUsedSq;    //cumulative sum sq of estimated thread tun
     double previousRun;  //time when last iteration started
+    double resumeTime{0};   //time at which resume the thread
     bool scheduleReset;
 
     std::unique_ptr<DelayEstimatorBase> delayEstimator;
@@ -222,7 +225,24 @@ public:
     }
 
     void step()
-    {
+    {   
+
+        double awakeningTime = 500 * 1e-6; // 500 us
+        double now{};
+
+        // wait exact time to resume
+        while (true)
+        {   
+            lock();
+            now = nowFunc();
+            unlock();
+            if (now >= resumeTime)
+                {
+                    break;
+                }
+            delayFunc(awakeningTime/50);
+        }
+
         lock();
         double currentRun = nowFunc();
         delayEstimator->onSchedule(count, currentRun);
@@ -255,15 +275,16 @@ public:
 
         lock();
         count++;
-        double now = nowFunc();
+        now = nowFunc();
         double elapsed = now - currentRun;
         double sleepPeriod = delayEstimator->computeDelay(count, now, elapsed);
+        resumeTime = now + sleepPeriod;
         //save last
         totalUsed += elapsed;
         sumUsedSq += elapsed * elapsed;
         unlock();
 
-        delayFunc(sleepPeriod);
+        delayFunc(sleepPeriod - awakeningTime);
     }
 
     void run() override
