@@ -13,6 +13,7 @@
 
 #include <cmath>
 #include <algorithm> // std::max
+#include <iostream>
 #include <memory>
 #include <mutex>
 
@@ -230,12 +231,14 @@ public:
         double awakeningTime = 500 * 1e-6; // 500 us
         double now{};
 
+//        std::cerr << "resumeTime: "<< resumeTime << '\n';
         // wait exact time to resume
         while (true)
         {   
             lock();
             now = nowFunc();
             unlock();
+//            std::cerr << "now: "<< now << '\n';
             if (now >= resumeTime)
                 {
                     break;
